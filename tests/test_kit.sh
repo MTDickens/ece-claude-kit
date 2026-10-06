@@ -9,7 +9,7 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
 
-export HOME="$T/home" USER=tester ECK_SCRATCH_ROOT="$T/scratch" SHELL=/bin/zsh
+export HOME="$T/home" USER=tester ECK_SCRATCH_ROOT="$T/scratch" SHELL=/bin/zsh ECK_HERDR_RUN_DIR="$T/herdr-run"
 mkdir -p "$HOME" "$ECK_SCRATCH_ROOT" "$T/fakebin"
 S="$ECK_SCRATCH_ROOT/tester"
 pass=0
@@ -55,7 +55,7 @@ INSTALL
 esac
 EOF
 chmod +x "$T/fakebin/"*
-export PATH="$T/fakebin:$PATH"
+export PATH="$T/fakebin:/usr/bin:/bin"  # 不继承开发者自己的 ~/.local/bin（里面可能有真的 herdr / claude）
 
 # 早期一键脚本写过的旧配置块，应被替换而不是重复
 printf '# >>> ece-claude >>>\nexport OLD=1\n# <<< ece-claude <<<\n' >"$HOME/.zshrc"
@@ -70,6 +70,10 @@ grep -q 'ece-claude-kit launcher' "$HOME/.local/bin/claude" && ok "claude 是启
 [ "$(stat -c %a "$S")" = 700 ] && ok "scratch 目录权限 700" || fail "权限"
 [ "$(grep -c '>>> ece-claude-kit >>>' "$HOME/.zshrc")" = 1 ] && ok "zshrc 写入一个配置块" || fail "配置块"
 grep -q 'OLD=1' "$HOME/.zshrc" && fail "旧配置块未删除" || ok "旧配置块已替换"
+grep -q "export HERDR_SOCKET_PATH=\"$T/herdr-run/herdr.sock\"" "$HOME/.zshrc" \
+  && grep -q "export HERDR_CLIENT_SOCKET_PATH=\"$T/herdr-run/herdr-client.sock\"" "$HOME/.zshrc" \
+  && ok "herdr socket 不放在 home（AFS）" || fail "herdr socket 配置"
+[ "$(stat -c %a "$T/herdr-run")" = 700 ] && ok "herdr socket 目录权限 700" || fail "herdr socket 目录权限"
 [ -L "$HOME/.local/bin/ece-kit" ] && [ -L "$HOME/.local/bin/ece-claude" ] && ok "命令已链接" || fail "命令"
 [ -x "$HOME/.local/bin/herdr" ] && ok "herdr 已安装" || fail "herdr"
 grep -q 'USE_HERDR=yes' "$HOME/.config/ece-claude-kit/settings.env" && ok "设置已保存" || fail "设置"

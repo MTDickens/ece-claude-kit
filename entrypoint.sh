@@ -23,9 +23,15 @@ SETTINGS_DIR="$HOME/.config/ece-claude-kit"   # home 在所有节点共享，设
 SETTINGS="$SETTINGS_DIR/settings.env"
 NODE="$(hostname -s 2>/dev/null || hostname)"
 LAUNCHER_MARK='# ece-claude-kit launcher'
+# herdr 默认把 socket 放在 ~/.config/herdr，但 AFS 不支持 Unix socket（bind 报 Operation not permitted），
+# server 起不来，herdr 会报 "server did not become ready within 15s"。改放到本节点的 /tmp。
+HERDR_RUN_DIR="${ECK_HERDR_RUN_DIR:-/tmp/herdr-$USER}"
 
 export CLAUDE_CONFIG_DIR="$CFG_DIR"
 export PATH="$LOCAL_BIN:$PATH"
+export HERDR_SOCKET_PATH="$HERDR_RUN_DIR/herdr.sock"
+export HERDR_CLIENT_SOCKET_PATH="$HERDR_RUN_DIR/herdr-client.sock"
+mkdir -p "$HERDR_RUN_DIR" 2>/dev/null || true
 
 # ---------------------------------------------------------------- 界面
 if [ -t 1 ]; then
@@ -146,22 +152,32 @@ strip_block() {
 }
 
 setup_shell_rc() {
-  local sh rc block
+  local sh rc block herdr_sh
   sh="$(login_shell)"
+  herdr_sh="# herdr 的 socket 不能放在 AFS 上，放到本节点 /tmp
+(umask 077; mkdir -p \"$HERDR_RUN_DIR\") 2>/dev/null
+export HERDR_SOCKET_PATH=\"$HERDR_SOCKET_PATH\"
+export HERDR_CLIENT_SOCKET_PATH=\"$HERDR_CLIENT_SOCKET_PATH\""
   case "$sh" in
     zsh)
       rc="$HOME/.zshrc"
       block="setopt interactivecomments
 export CLAUDE_CONFIG_DIR=$CFG_DIR
-export PATH=\$HOME/.local/bin:\$PATH" ;;
+export PATH=\$HOME/.local/bin:\$PATH
+$herdr_sh" ;;
     tcsh|csh)
       rc="$HOME/.cshrc"
       block="setenv CLAUDE_CONFIG_DIR $CFG_DIR
-set path = (\$HOME/.local/bin \$path)" ;;
+set path = (\$HOME/.local/bin \$path)
+# herdr 的 socket 不能放在 AFS 上，放到本节点 /tmp
+(umask 077; mkdir -p $HERDR_RUN_DIR) >& /dev/null
+setenv HERDR_SOCKET_PATH $HERDR_SOCKET_PATH
+setenv HERDR_CLIENT_SOCKET_PATH $HERDR_CLIENT_SOCKET_PATH" ;;
     *)
       rc="$HOME/.bashrc"
       block="export CLAUDE_CONFIG_DIR=$CFG_DIR
-export PATH=\$HOME/.local/bin:\$PATH" ;;
+export PATH=\$HOME/.local/bin:\$PATH
+$herdr_sh" ;;
   esac
   touch "$rc"
   strip_block "$rc"

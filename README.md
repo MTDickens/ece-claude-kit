@@ -90,6 +90,7 @@ ECE 的 home 在 AFS 上，只有 2GB，超额后无法登录；AFS 的登录凭
 |---|---|
 | Mac 上看不到会话 | 确认 `ece-claude` 在运行（`ece-kit status`）、账号相同，且是 Pro/Max/Team/Enterprise |
 | `herdr --version` 报 `GLIBC_2.xx not found` | 预编译程序与 RHEL 8 不兼容。`ece-kit settings` 关闭 herdr，改用 tmux |
+| `herdr` 报 `server did not become ready within 15s` | AFS 上不能建 Unix socket。重新运行一键安装（会把 socket 放到 `/tmp/herdr-$USER`），然后 `exec $SHELL -l` |
 | 节点重启后会话离线 | 重新 `herdr`，再运行 `ece-claude`。同一目录下会恢复之前的会话 |
 | 登录链接打不开 / 粘贴代码失败 | 运行 `claude`，在里面输入 `/login` |
 | `claude` 报本节点没安装 | 新节点或 scratch 被清理，重新运行一键安装 |
