@@ -183,6 +183,24 @@ $herdr_sh" ;;
   strip_block "$rc"
   printf '\n# >>> ece-claude-kit >>>\n%s\n# <<< ece-claude-kit <<<\n' "$block" >>"$rc"
   info "已写入 $rc（登录 shell：$sh）"
+  if [ "$rc" = "$HOME/.bashrc" ]; then ensure_bash_login_sources_rc; fi
+}
+
+# SSH 登录得到的是 login shell，bash 此时只读 ~/.bash_profile / ~/.bash_login / ~/.profile（第一个存在的），
+# 不读 ~/.bashrc。ECE 的新账号通常一个都没有，导致上面写入的配置在新终端里不生效。
+ensure_bash_login_sources_rc() {
+  local f
+  for f in "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile" ""; do
+    [ -z "$f" ] || [ -f "$f" ] && break
+  done
+  f="${f:-$HOME/.bash_profile}"
+  strip_block "$f"
+  if grep -q 'bashrc' "$f" 2>/dev/null; then
+    return 0
+  fi
+  printf '\n# >>> ece-claude-kit >>>\n%s\n# <<< ece-claude-kit <<<\n' \
+    '[ -f ~/.bashrc ] && . ~/.bashrc' >>"$f"
+  info "已让 $f 加载 ~/.bashrc"
 }
 
 # ---------------------------------------------------------------- 安装
@@ -396,7 +414,8 @@ do_uninstall() {
     rm -f "$LOCAL_BIN/ece-kit" "$LOCAL_BIN/ece-claude"
     if grep -q "$LAUNCHER_MARK" "$LOCAL_BIN/claude" 2>/dev/null; then rm -f "$LOCAL_BIN/claude"; fi
     [ -L "$SHARE_LINK" ] && rm -f "$SHARE_LINK"
-    for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.cshrc"; do strip_block "$rc"; done
+    for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.cshrc" \
+      "$HOME/.bash_profile" "$HOME/.bash_login" "$HOME/.profile"; do strip_block "$rc"; done
     rm -rf "$SETTINGS_DIR"
     info "共享部分已删除。工具目录 $KIT_ROOT 请自行删除。"
   fi

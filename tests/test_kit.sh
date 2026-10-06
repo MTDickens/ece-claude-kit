@@ -78,6 +78,15 @@ grep -q "export HERDR_SOCKET_PATH=\"$T/herdr-run/herdr.sock\"" "$HOME/.zshrc" \
 [ -x "$HOME/.local/bin/herdr" ] && ok "herdr 已安装" || fail "herdr"
 grep -q 'USE_HERDR=yes' "$HOME/.config/ece-claude-kit/settings.env" && ok "设置已保存" || fail "设置"
 
+echo "== bash 登录 shell"
+printf '#!/bin/sh\necho "tester:x:1000:1000::/home/tester:/bin/bash"\n' >"$T/fakebin/getent"
+bash "$ROOT/entrypoint.sh" install --yes </dev/null >/dev/null 2>&1 || fail "bash 用户安装失败"
+o="$(env -i HOME="$HOME" PATH=/usr/bin:/bin bash -lc 'echo "$HERDR_SOCKET_PATH|$CLAUDE_CONFIG_DIR"')"
+[ "$o" = "$T/herdr-run/herdr.sock|$S/claude-config" ] && ok "bash login shell 也加载配置" || fail "login shell: $o"
+bash "$ROOT/entrypoint.sh" install --yes </dev/null >/dev/null 2>&1 || fail "bash 用户重复安装失败"
+[ "$(grep -c 'bashrc' "$HOME/.bash_profile")" = 1 ] && ok "重复安装不重复写 .bash_profile" || fail ".bash_profile 重复"
+printf '#!/bin/sh\necho "tester:x:1000:1000::/home/tester:/bin/zsh"\n' >"$T/fakebin/getent"
+
 echo "== launcher"
 v="$(env -u CLAUDE_CONFIG_DIR "$HOME/.local/bin/claude" --version)"
 [ "$v" = "9.9.9 (Claude Code)" ] && ok "启动脚本选中本节点版本" || fail "版本 $v"
