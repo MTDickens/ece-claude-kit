@@ -1,0 +1,18 @@
+#!/bin/sh
+# ece-claude-kit launcher
+# 安装到 ~/.local/bin/claude。home 在 ECE 各节点之间共享，但 Claude Code 程序
+# 装在各节点自己的 /scratch，所以每次启动时选用本节点上最新的版本，
+# 避免在 A 节点更新后，B 节点的 claude 指向一个不存在的版本。
+d="$HOME/.local/share/claude/versions"
+# shellcheck disable=SC2010  # 版本目录名都是纯数字版本号
+v=$(ls -1 "$d" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+if [ -z "$v" ]; then
+  echo "本节点 ($(hostname -s 2>/dev/null || hostname)) 还没安装 Claude Code。运行：ece-kit install" >&2
+  exit 127
+fi
+# 即使 shell 配置没有加载（例如非登录 shell），也使用 scratch 上的配置目录
+if [ -z "${CLAUDE_CONFIG_DIR:-}" ]; then
+  CLAUDE_CONFIG_DIR="${ECK_SCRATCH_ROOT:-/scratch}/${USER:-$(id -un)}/claude-config"
+  export CLAUDE_CONFIG_DIR
+fi
+exec "$d/$v" "$@"

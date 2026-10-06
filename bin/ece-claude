@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# 启动 Claude Code Remote Control（在 herdr 面板里运行）。
+# 用法：ece-claude [工作目录]，默认使用 ece-kit 设置里的工作目录。
+exec "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/../entrypoint.sh" start "$@"

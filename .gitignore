@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+*.eck-tmp
+.env
+.env.*
+.credentials.json
+claude-config/
+claude-bin/
